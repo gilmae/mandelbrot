@@ -59,10 +59,11 @@ func get_colour(esc int) color.NRGBA {
 }
 
 func main() {
-if (len(os.Args) < 5) {
-  fmt.Println(usage)
-  return
-}
+  if (len(os.Args) < 5) {
+    fmt.Println(usage)
+    return
+  }
+  
   midX,err := strconv.ParseFloat(os.Args[1], 64)
   if (err != nil) {
     fmt.Println(err)
