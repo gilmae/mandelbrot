@@ -12,6 +12,7 @@ import (
     "math"
     "math/rand"
     "time"
+    "github.com/gilmae/imageutil"
 )
 
 const (
@@ -99,6 +100,29 @@ func get_colour(esc float64) color.NRGBA {
   return color.NRGBA{uint8(r),uint8(g),uint8(b),255};
 }
 
+func FilterForBoringness(image image.Image) bool {
+  histogram := imageutil.Histogram(image)
+
+  boringRows := 0
+  var boringColumns int
+  for row := range histogram {
+     boringColumns = 0
+     for val := range histogram[row] {
+       if (histogram[row][val] == 0) {
+         boringColumns += 1
+       }
+     }
+     if (boringColumns > 2) {
+       boringRows +=1
+     }
+     if (boringRows > 3) {
+       return true
+     }
+  }
+
+  return false
+}
+
 func main() {
   if (len(os.Args) < 2) {
     fmt.Println(usage)
@@ -147,7 +171,7 @@ func main() {
 
   plotted_set := plot(midX, midY, zoom)
 
-  if (plotted_set != nil) {
+  if (!FilterForBoringness(plotted_set)) {
 
     filename := out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".png"
     file, err := os.Create(filename)
