@@ -15,10 +15,12 @@ So this program has a 'boringness' filter, which really just looks at a histogra
 
 ## Usage
 
+```
 $ cd $GOPATH
 $ git clone git@github.com:gilmae/mandelbrot.git ./src/github.com/gilmae/mandelbrot
 $ git install github.com/gilmae/mandelbrot
 $ bin/mandelbrot <output_path> <real> <imaginary> <zoom>
+```
 
 To randomise any of real, imaginary, or zoom, enter a value of .
 
