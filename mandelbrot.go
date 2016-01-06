@@ -24,18 +24,25 @@ const (
     red    = 230
     green  = 235
     blue   = 255
-    usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\n
-    real, imaginary, and zoom can be replaced with . to generate a random value"
+    usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\nreal, imaginary, and zoom can be replaced with . to generate a random value"
 )
 
-func calculate_escape(c complex128) int {
-  i := 0
+func calculate_escape(c complex128) float64 {
+  iteration := 0.0
 
-  for z:= c;cmplx.Abs(z) < 2.0 && i < maxEsc; i+=1 {
+  var z complex128
+  for z= c;cmplx.Abs(z) < 2.0 && iteration < maxEsc; iteration+=1 {
     z = z*z+c;
   }
 
-  return i;
+  z = z*z+c
+  z = z*z+c
+  iteration += 2
+  reZ := real(z)
+  imZ := imag(z)
+  magnitude := math.Sqrt(reZ * reZ + imZ * imZ)
+  mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
+  return mu
 }
 
 func plot(midX float64, midY float64, zoom float64) draw.Image {
@@ -55,10 +62,11 @@ func plot(midX float64, midY float64, zoom float64) draw.Image {
   return b
 }
 
-func get_colour(esc int) color.NRGBA {
+func get_colour(esc float64) color.NRGBA {
   if esc == maxEsc{
     return color.NRGBA{0, 0, 0, 255}
   }
+
   palette := [16]color.NRGBA{
     color.NRGBA{66, 30, 15, 255},
     color.NRGBA{25, 7, 26, 255},
@@ -76,7 +84,19 @@ func get_colour(esc int) color.NRGBA {
     color.NRGBA{204, 128, 0, 255},
     color.NRGBA{153, 87, 0, 255},
     color.NRGBA{106, 52, 3, 255}}
-  return palette[esc % 16]
+
+  clr1 := int(esc)
+  t2 :=  esc - float64(clr1);
+  t1 := 1 - t2;
+
+  clr1 = clr1 % len(palette)
+  clr2 := (clr1 + 1) % len(palette)
+
+  r := float64(palette[clr1].R) * t1 + float64(palette[clr2].R) * t2
+  g := float64(palette[clr1].G) * t1 + float64(palette[clr2].G) * t2
+  b := float64(palette[clr1].B) * t1 + float64(palette[clr2].B) * t2
+
+  return color.NRGBA{uint8(r),uint8(g),uint8(b),255};
 }
 
 func main() {
@@ -89,7 +109,7 @@ func main() {
   var midX float64
   var midY float64
   var zoom float64
-  fmt.Println(os.Args[2])
+
   if (os.Args[2] == ".") {
     midX = rand.Float64() * (rMax - rMin) + rMin
   } else {
@@ -127,17 +147,20 @@ func main() {
 
   plotted_set := plot(midX, midY, zoom)
 
-  filename := out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".png"
-  file, err := os.Create(filename)
-  if err != nil {
-    fmt.Println(err)
-  }
+  if (plotted_set != nil) {
 
-  if err = png.Encode(file,plotted_set); err != nil {
-    fmt.Println(err)
-  }
+    filename := out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".png"
+    file, err := os.Create(filename)
+    if err != nil {
+      fmt.Println(err)
+    }
 
-  if err = file.Close();err != nil {
-    fmt.Println(err)
+    if err = png.Encode(file,plotted_set); err != nil {
+      fmt.Println(err)
+    }
+
+    if err = file.Close();err != nil {
+      fmt.Println(err)
+    }
   }
 }
