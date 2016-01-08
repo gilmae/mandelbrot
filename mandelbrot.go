@@ -134,6 +134,8 @@ func main() {
   var midY float64
   var zoom float64
 
+  out_path := os.Args[1]
+
   if (os.Args[2] == ".") {
     midX = rand.Float64() * (rMax - rMin) + rMin
   } else {
@@ -167,13 +169,17 @@ func main() {
     zoom = azoom
   }
 
-  out_path := os.Args[1]
+  var filename string
+  if (len(os.Args) > 5) {
+    filename = out_path + "/" + os.Args[5]
+  } else {
+    filename = out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".png"
+  }
 
   plotted_set := plot(midX, midY, zoom)
 
   if (!FilterForBoringness(plotted_set)) {
 
-    filename := out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".png"
     file, err := os.Create(filename)
     if err != nil {
       fmt.Println(err)
