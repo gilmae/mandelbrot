@@ -5,7 +5,7 @@ import (
     "image"
     "image/color"
     "image/draw"
-    "image/png"
+    "image/jpeg"
     "math/cmplx"
     "os"
     "strconv"
@@ -16,15 +16,12 @@ import (
 )
 
 const (
-    maxEsc = 255.0
+    maxEsc = 2000.0
     rMin   = -2.6
     rMax   = 1.1
     iMin   = -1.2
     iMax   = 1.2
     width  = 1600
-    red    = 230
-    green  = 235
-    blue   = 255
     usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\nreal, imaginary, and zoom can be replaced with . to generate a random value"
 )
 
@@ -56,7 +53,7 @@ func plot(midX float64, midY float64, zoom float64) draw.Image {
 
   for x:=0; x < width; x += 1 {
     for y:=0; y < height; y += 1 {
-      esc := calculate_escape(complex(float64(x - width/2)/scale + midX, float64(y - height/2)/scale+midY))
+      esc := calculate_escape(complex(float64(x - width/2)/scale + midX, float64(y + height/2)/scale-midY))
       b.Set(x,y, get_colour(esc))
     }
   }
@@ -173,7 +170,7 @@ func main() {
   if (len(os.Args) > 5) {
     filename = out_path + "/" + os.Args[5]
   } else {
-    filename = out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".png"
+    filename = out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
   }
 
   plotted_set := plot(midX, midY, zoom)
@@ -185,7 +182,7 @@ func main() {
       fmt.Println(err)
     }
 
-    if err = png.Encode(file,plotted_set); err != nil {
+    if err = jpeg.Encode(file,plotted_set, &jpeg.Options{jpeg.DefaultQuality}); err != nil {
       fmt.Println(err)
     }
 
