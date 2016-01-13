@@ -33,6 +33,10 @@ func calculate_escape(c complex128) float64 {
     z = z*z+c;
   }
 
+  if (iteration >= maxEsc) {
+    return maxEsc;
+  }
+
   z = z*z+c
   z = z*z+c
   iteration += 2
@@ -61,7 +65,7 @@ func plot(midX float64, midY float64, zoom float64) draw.Image {
 }
 
 func get_colour(esc float64) color.NRGBA {
-  if esc == maxEsc{
+  if esc >= maxEsc{
     return color.NRGBA{0, 0, 0, 255}
   }
 
