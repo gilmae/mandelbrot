@@ -13,28 +13,28 @@ import (
     "math/rand"
     "time"
     "github.com/gilmae/imageutil"
+    "flag"
 )
 
 const (
-    maxEsc = 2000.0
-    rMin   = -2.6
-    rMax   = 1.1
-    iMin   = -1.2
-    iMax   = 1.2
+    rMin   = -2.25
+    rMax   = 0.75
+    iMin   = -1.5
+    iMax   = 1.5
     width  = 1600
     usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\nreal, imaginary, and zoom can be replaced with . to generate a random value"
 )
 
-func calculate_escape(c complex128) float64 {
+func calculate_escape(c complex128, maxIterations float64, bailout float64) float64 {
   iteration := 0.0
 
   var z complex128
-  for z= c;cmplx.Abs(z) < 2.0 && iteration < maxEsc; iteration+=1 {
+  for z= c;cmplx.Abs(z) < bailout && iteration < maxIterations; iteration+=1 {
     z = z*z+c;
   }
 
-  if (iteration >= maxEsc) {
-    return maxEsc;
+  if (iteration >= maxIterations) {
+    return maxIterations;
   }
 
   z = z*z+c
@@ -47,7 +47,7 @@ func calculate_escape(c complex128) float64 {
   return mu
 }
 
-func plot(midX float64, midY float64, zoom float64) draw.Image {
+func plot(midX float64, midY float64, zoom float64, smooth bool, maxIterations float64, bailout float64) draw.Image {
   scale := (width / (rMax - rMin))
   height := int(scale * (iMax-iMin))
   scale = scale * zoom
@@ -57,15 +57,15 @@ func plot(midX float64, midY float64, zoom float64) draw.Image {
 
   for x:=0; x < width; x += 1 {
     for y:=0; y < height; y += 1 {
-      esc := calculate_escape(complex(float64(x - width/2)/scale + midX, float64(y + height/2)/scale-midY))
-      b.Set(x,y, get_colour(esc))
+      esc := calculate_escape(complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY), maxIterations, bailout)
+      b.Set(x,y, get_colour(esc, smooth, maxIterations))
     }
   }
   return b
 }
 
-func get_colour(esc float64) color.NRGBA {
-  if esc >= maxEsc{
+func get_colour(esc float64, smooth bool, maxIterations float64) color.NRGBA {
+  if esc >= maxIterations{
     return color.NRGBA{0, 0, 0, 255}
   }
 
@@ -86,7 +86,7 @@ func get_colour(esc float64) color.NRGBA {
     color.NRGBA{204, 128, 0, 255},
     color.NRGBA{153, 87, 0, 255},
     color.NRGBA{106, 52, 3, 255}}
-
+  if (smooth) {
   clr1 := int(esc)
   t2 :=  esc - float64(clr1);
   t1 := 1 - t2;
@@ -99,9 +99,12 @@ func get_colour(esc float64) color.NRGBA {
   b := float64(palette[clr1].B) * t1 + float64(palette[clr2].B) * t2
 
   return color.NRGBA{uint8(r),uint8(g),uint8(b),255};
+  } else {
+    return palette[int(esc) % len(palette)]
+  }
 }
 
-func FilterForBoringness(image image.Image) bool {
+func IsBoring(image image.Image) bool {
   histogram := imageutil.Histogram(image)
 
   boringRows := 0
@@ -125,61 +128,52 @@ func FilterForBoringness(image image.Image) bool {
 }
 
 func main() {
-  if (len(os.Args) < 2) {
-    fmt.Println(usage)
-    return
-  }
 
-  rand.Seed(time.Now().UnixNano())
   var midX float64
   var midY float64
   var zoom float64
-
-  out_path := os.Args[1]
-
-  if (os.Args[2] == ".") {
-    midX = rand.Float64() * (rMax - rMin) + rMin
-  } else {
-    amidX,err := strconv.ParseFloat(os.Args[2], 64)
-    if (err != nil) {
-      fmt.Println(err)
-      return
-    }
-    midX = amidX
-  }
-
-  if (os.Args[3] == ".") {
-    midY = rand.Float64() * (iMax - iMin) + iMin
-  } else {
-    amidY, err := strconv.ParseFloat(os.Args[3], 64)
-    if (err != nil) {
-      fmt.Println(err)
-      return
-    }
-    midY = amidY
-  }
-
-  if (os.Args[4] == ".") {
-    zoom = rand.Float64() * math.Pow(2, 10) + 1
-  } else {
-    azoom, err := strconv.ParseFloat(os.Args[4], 64)
-    if (err != nil) {
-      fmt.Println(err)
-      return
-    }
-    zoom = azoom
-  }
-
+  var output string
   var filename string
-  if (len(os.Args) > 5) {
-    filename = out_path + "/" + os.Args[5]
-  } else {
-    filename = out_path + "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
+  var filterForBoringness bool
+  var smooth bool
+  var bailout float64
+  var maxIterations float64
+
+  rand.Seed(time.Now().UnixNano())
+  flag.Float64Var(&midX, "r", -100.0, "Real component of the midpoint. If nothing given, random point selected.")
+  flag.Float64Var(&midY, "i", -100.0, "Imaginary component of the midpoint. If nothing given, random point selected.")
+  flag.Float64Var(&zoom, "z", 0, "Zoom level. If nothing given, zoom level randomly selected")
+  flag.StringVar(&output, "o", ".", "Output path")
+  flag.StringVar(&filename, "f", "", "Output file name")
+  flag.BoolVar(&filterForBoringness, "d", true, "Apply a boringness filter")
+  flag.BoolVar(&smooth, "s", true, "Smooth colours")
+  flag.Float64Var(&bailout, "b", 4.0, "Bailout value")
+  flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations")
+  flag.Parse()
+
+  if (midX == -100.0) {
+    midX = rand.Float64() * (rMax - rMin) + rMin
   }
 
-  plotted_set := plot(midX, midY, zoom)
+  if (midY == -100.0) {
+    midY = rand.Float64() * (iMax - iMin) + iMin
+  }
 
-  if (!FilterForBoringness(plotted_set)) {
+  if (zoom == 0) {
+    zoom = rand.Float64() * math.Pow(2, 10) + 1
+  }
+
+  if (filename == "") {
+    filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
+  }
+
+
+  filename = output + "/" + filename
+
+  plotted_set := plot(midX, midY, zoom, smooth, maxIterations, bailout)
+
+  if (filterForBoringness && IsBoring(plotted_set)) {
+  } else {
 
     file, err := os.Create(filename)
     if err != nil {
