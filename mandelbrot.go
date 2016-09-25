@@ -14,6 +14,7 @@ import (
     "time"
     "github.com/gilmae/imageutil"
     "flag"
+    "log"
 )
 
 const (
@@ -128,6 +129,7 @@ func IsBoring(image image.Image) bool {
 }
 
 func main() {
+  start := time.Now()
 
   var midX float64
   var midY float64
@@ -188,4 +190,8 @@ func main() {
       fmt.Println(err)
     }
   }
+
+  elapsed := time.Since(start)
+  log.Printf("Binomial took %s", elapsed)
+
 }
