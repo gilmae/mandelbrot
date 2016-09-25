@@ -14,7 +14,11 @@ import (
     "time"
     "github.com/gilmae/imageutil"
     "flag"
+<<<<<<< HEAD
      "sync"
+=======
+    "log"
+>>>>>>> master
 )
 var  maxIterations float64 = 2000.0
 var  bailout float64 = 4.0
@@ -158,6 +162,7 @@ func IsBoring(image image.Image) bool {
 }
 
 func main() {
+  start := time.Now()
 
   var midX float64
   var midY float64
@@ -216,4 +221,8 @@ func main() {
       fmt.Println(err)
     }
   }
+
+  elapsed := time.Since(start)
+  log.Printf("Binomial took %s", elapsed)
+
 }
