@@ -14,11 +14,8 @@ import (
     "time"
     "github.com/gilmae/imageutil"
     "flag"
-<<<<<<< HEAD
-     "sync"
-=======
+    "sync"
     "log"
->>>>>>> master
 )
 var  maxIterations float64 = 2000.0
 var  bailout float64 = 4.0
