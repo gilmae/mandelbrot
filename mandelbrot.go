@@ -84,8 +84,6 @@ func plot(midX float64, midY float64, zoom float64, smooth bool) draw.Image {
     for y:=0; y < height; y += 1 {
 
       points <- Point{complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY),x,y}
-      //esc := calculate_escape()
-      //b.Set(x,y, get_colour(esc, smooth))
     }
   }
 
@@ -220,6 +218,6 @@ func main() {
   }
 
   elapsed := time.Since(start)
-  log.Printf("Binomial took %s", elapsed)
+  log.Printf("Plot took %s", elapsed)
 
 }
