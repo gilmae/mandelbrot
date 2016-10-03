@@ -37,25 +37,34 @@ const (
 
 func calculate_escape(c complex128) float64 {
   iteration := 0.0
+  var reZ float64
+  var imZ float64
 
-  var z complex128
-  for z= c;cmplx.Abs(z) < bailout && iteration < maxIterations; iteration+=1 {
-    z = z*z+c;
+  for z := complex(0.0,0.0); iteration < maxIterations && cmplx.Abs(z) < bailout*bailout; iteration+=1 {
+     reZ = math.Abs(real(z))
+     imZ = math.Abs(imag(z))
+
+     newImag := 2 * reZ * imZ + imag(c)
+     newReal := reZ * reZ - imZ * imZ + real(c)
+
+     z = complex(newReal, newImag)
   }
 
   if (iteration >= maxIterations) {
-    return maxIterations;
+    return maxIterations
   }
 
-  z = z*z+c
+  return iteration
+}
+  /*z = z*z+c
   z = z*z+c
   iteration += 2
   reZ := real(z)
   imZ := imag(z)
   magnitude := math.Sqrt(reZ * reZ + imZ * imZ)
   mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
-  return mu
-}
+  return mu*/
+
 
 func plot(midX float64, midY float64, zoom float64, smooth bool) draw.Image {
   scale := (width / (rMax - rMin))
