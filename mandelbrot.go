@@ -14,8 +14,17 @@ import (
     "time"
     "github.com/gilmae/imageutil"
     "flag"
+    "sync"
     "log"
 )
+var  maxIterations float64 = 2000.0
+var  bailout float64 = 4.0
+
+type Point struct {
+   c complex128
+   x int
+   y int
+}
 
 const (
     rMin   = -2.25
@@ -26,7 +35,7 @@ const (
     usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\nreal, imaginary, and zoom can be replaced with . to generate a random value"
 )
 
-func calculate_escape(c complex128, maxIterations float64, bailout float64) float64 {
+func calculate_escape(c complex128) float64 {
   iteration := 0.0
 
   var z complex128
@@ -48,7 +57,7 @@ func calculate_escape(c complex128, maxIterations float64, bailout float64) floa
   return mu
 }
 
-func plot(midX float64, midY float64, zoom float64, smooth bool, maxIterations float64, bailout float64) draw.Image {
+func plot(midX float64, midY float64, zoom float64, smooth bool) draw.Image {
   scale := (width / (rMax - rMin))
   height := int(scale * (iMax-iMin))
   scale = scale * zoom
@@ -56,16 +65,35 @@ func plot(midX float64, midY float64, zoom float64, smooth bool, maxIterations f
   b := image.NewNRGBA(bounds)
   draw.Draw(b, bounds, image.NewUniform(color.Black), image.ZP, draw.Src)
 
+  points := make(chan Point, 64)
+
+  // spawn four worker goroutines
+      var wg sync.WaitGroup
+      for i := 0; i < 4; i++ {
+          wg.Add(1)
+          go func() {
+              for p := range points {
+                esc := calculate_escape(p.c)
+                b.Set(p.x,p.y, get_colour(esc, smooth))
+              }
+              wg.Done()
+          }()
+      }
+
   for x:=0; x < width; x += 1 {
     for y:=0; y < height; y += 1 {
-      esc := calculate_escape(complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY), maxIterations, bailout)
-      b.Set(x,y, get_colour(esc, smooth, maxIterations))
+
+      points <- Point{complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY),x,y}
     }
   }
+
+  close(points)
+
+  wg.Wait()
   return b
 }
 
-func get_colour(esc float64, smooth bool, maxIterations float64) color.NRGBA {
+func get_colour(esc float64, smooth bool) color.NRGBA {
   if esc >= maxIterations{
     return color.NRGBA{0, 0, 0, 255}
   }
@@ -138,8 +166,6 @@ func main() {
   var filename string
   var filterForBoringness bool
   var smooth bool
-  var bailout float64
-  var maxIterations float64
 
   rand.Seed(time.Now().UnixNano())
   flag.Float64Var(&midX, "r", -100.0, "Real component of the midpoint. If nothing given, random point selected.")
@@ -162,7 +188,7 @@ func main() {
   }
 
   if (zoom == 0) {
-    zoom = rand.Float64() * math.Pow(2, 10) + 1
+    zoom = rand.Float64() * math.Pow(2, 12) + 1
   }
 
   if (filename == "") {
@@ -172,8 +198,8 @@ func main() {
 
   filename = output + "/" + filename
 
-  plotted_set := plot(midX, midY, zoom, smooth, maxIterations, bailout)
-
+  plotted_set := plot(midX, midY, zoom, smooth)
+  println(plotted_set)
   if (filterForBoringness && IsBoring(plotted_set)) {
   } else {
 
@@ -192,6 +218,6 @@ func main() {
   }
 
   elapsed := time.Since(start)
-  log.Printf("Binomial took %s", elapsed)
+  log.Printf("Plot took %s", elapsed)
 
 }
