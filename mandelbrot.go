@@ -27,10 +27,10 @@ type Point struct {
 }
 
 const (
-    rMin   = -2.25
-    rMax   = 0.75
-    iMin   = -1.5
-    iMax   = 1.5
+    rMin   = -2.0
+    rMax   = 2.0
+    iMin   = -0.5
+    iMax   = 3.0
     width  = 1600
     usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\nreal, imaginary, and zoom can be replaced with . to generate a random value"
 )
@@ -40,12 +40,13 @@ func calculate_escape(c complex128) float64 {
   var reZ float64
   var imZ float64
 
-  for z := complex(0.0,0.0); iteration < maxIterations && cmplx.Abs(z) < bailout*bailout; iteration+=1 {
+  var z complex128
+  for z = complex(0.0,0.0); iteration < maxIterations && cmplx.Abs(z) < bailout*bailout; iteration+=1 {
      reZ = math.Abs(real(z))
      imZ = math.Abs(imag(z))
 
-     newImag := 2 * reZ * imZ + imag(c)
-     newReal := reZ * reZ - imZ * imZ + real(c)
+     newImag := 2 * reZ * imZ - imag(c)
+     newReal := reZ * reZ - imZ * imZ - real(c)
 
      z = complex(newReal, newImag)
   }
@@ -54,16 +55,16 @@ func calculate_escape(c complex128) float64 {
     return maxIterations
   }
 
-  return iteration
-}
-  /*z = z*z+c
+  z = z*z+c
   z = z*z+c
   iteration += 2
-  reZ := real(z)
-  imZ := imag(z)
+  reZ = real(z)
+  imZ = imag(z)
   magnitude := math.Sqrt(reZ * reZ + imZ * imZ)
   mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
-  return mu*/
+  return mu
+}
+
 
 
 func plot(midX float64, midY float64, zoom float64, smooth bool) draw.Image {
