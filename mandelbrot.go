@@ -113,8 +113,7 @@ func get_colour(esc float64, smooth bool) color.NRGBA {
     color.NRGBA{255, 170, 0, 255},
     color.NRGBA{204, 128, 0, 255},
     color.NRGBA{153, 87, 0, 255},
-    color.NRGBA{106, 52, 3, 255}
-  }
+    color.NRGBA{106, 52, 3, 255}}
 
   if (smooth) {
     clr1 := int(esc)
