@@ -23,6 +23,7 @@ type Point struct {
    c complex128
    x int
    y int
+   escape float64
 }
 
 const (
@@ -56,14 +57,7 @@ func calculate_escape(c complex128) float64 {
   return mu
 }
 
-func plot(midX float64, midY float64, zoom float64, smooth bool) draw.Image {
-  scale := (width / (rMax - rMin))
-  height := int(scale * (iMax-iMin))
-  scale = scale * zoom
-  bounds := image.Rect(0,0,width,height)
-  b := image.NewNRGBA(bounds)
-  draw.Draw(b, bounds, image.NewUniform(color.Black), image.ZP, draw.Src)
-
+func plot(midX float64, midY float64, scale float64, width int, height int, calculated chan Point) {
   points := make(chan Point, 64)
 
   // spawn four worker goroutines
@@ -72,8 +66,8 @@ func plot(midX float64, midY float64, zoom float64, smooth bool) draw.Image {
     wg.Add(1)
     go func() {
       for p := range points {
-        esc := calculate_escape(p.c)
-        b.Set(p.x,p.y, get_colour(esc, smooth))
+        p.escape = calculate_escape(p.c)
+        calculated <- p
       }
       wg.Done()
     }()
@@ -81,15 +75,13 @@ func plot(midX float64, midY float64, zoom float64, smooth bool) draw.Image {
 
   for x:=0; x < width; x += 1 {
     for y:=0; y < height; y += 1 {
-
-      points <- Point{complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY),x,y}
+      points <- Point{complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY),x,y, 0}
     }
   }
 
   close(points)
 
   wg.Wait()
-  return b
 }
 
 func get_colour(esc float64, smooth bool) color.NRGBA {
@@ -160,14 +152,30 @@ func main() {
 
   filename = output + "/" + filename
 
-  plotted_set := plot(midX, midY, zoom, smooth)
+  scale := (width / (rMax - rMin))
+  scale = scale * zoom
+
+  height := int(scale * (iMax-iMin))
+  bounds := image.Rect(0,0,width,height)
+  b := image.NewNRGBA(bounds)
+  draw.Draw(b, bounds, image.NewUniform(color.Black), image.ZP, draw.Src)
+
+  calculatedChan := make(chan Point)
+
+  go func(points<-chan Point, targetImage *image.NRGBA) {
+    for p := range points {
+      targetImage.Set(p.x,p.y, get_colour(p.escape, smooth))
+    }
+  }(calculatedChan, b)
+
+  plot(midX, midY, scale, width, height, calculatedChan)
 
   file, err := os.Create(filename)
   if err != nil {
     fmt.Println(err)
   }
 
-  if err = jpeg.Encode(file,plotted_set, &jpeg.Options{jpeg.DefaultQuality}); err != nil {
+  if err = jpeg.Encode(file,b, &jpeg.Options{jpeg.DefaultQuality}); err != nil {
     fmt.Println(err)
   }
 
