@@ -18,6 +18,8 @@ import (
 )
 var  maxIterations float64 = 2000.0
 var  bailout float64 = 4.0
+var  width int = 1600
+var height int = 1600
 
 type Point struct {
    c complex128
@@ -31,7 +33,6 @@ const (
     rMax   = 0.75
     iMin   = -1.5
     iMax   = 1.5
-    width  = 1600
     usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\n\n"
 )
 
@@ -143,6 +144,8 @@ func main() {
   flag.StringVar(&filename, "f", "", "Output file name.")
   flag.BoolVar(&smooth, "s", true, "Smooth colours.")
   flag.Float64Var(&bailout, "b", 4.0, "Bailout value.")
+  flag.IntVar(&width, "w", 1600, "Width. Defaults to 1600.")
+  flag.IntVar(&height, "h", 1600, "Height. Defaults to 1600.")
   flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations.")
   flag.Parse()
 
@@ -152,10 +155,9 @@ func main() {
 
   filename = output + "/" + filename
 
-  scale := (width / (rMax - rMin))
+  scale := (float64(width) / (rMax - rMin))
   scale = scale * zoom
 
-  height := int(scale * (iMax-iMin))
   bounds := image.Rect(0,0,width,height)
   b := image.NewNRGBA(bounds)
   draw.Draw(b, bounds, image.NewUniform(color.Black), image.ZP, draw.Src)
