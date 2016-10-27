@@ -15,11 +15,30 @@ import (
     "flag"
     "sync"
     "log"
+    "github.com/gilmae/interpolation"
 )
-var  maxIterations float64 = 2000.0
+var  maxIterations float64 = 1000.0
 var  bailout float64 = 4.0
 var  width int = 1600
 var height int = 1600
+var paletteLength int = 16;
+var colour_mode string = "";
+
+/*var xSequence = []float64{0.0, .16, .42, .6425, .8675, 1}
+var redpoints =  []float64{0.0,32.0,237.0,255.0,0.0,0.0}
+var greenpoints =  []float64{7.0,107.0,255.0, 170.0, 2.0, 7.0}
+var bluepoints =  []float64{100.0, 203.0,255.0, 0.0, 0.0, 100.0}*/
+
+var xSequence = []float64{0.0, .06666, .13333, .2, .26666, .33333, .4, .466666, .53333, .6, .66666, .73333, .8, .86666, .93333, 1.0}
+var redpoints =  []float64{66.0, 25.0, 9.0, 4.0, 0.0, 12.0, 24.0, 57.0, 134.0, 211.0, 241.0, 248.0, 255.0, 204.0, 153.0, 106.0, }
+var greenpoints =  []float64{30.0, 7.0, 1.0, 4.0, 7.0, 44.0, 82.0, 125.0, 181.0, 236.0, 233.0, 201.0, 170.0, 128.0, 87.0, 52.0}
+ var bluepoints =  []float64{15.0, 26.0, 47.0, 73.0, 100.0, 138.0, 177.0, 209.0, 229.0, 248.0, 191.0, 95.0, 0.0, 0.0, 0.0, 3.0}
+
+var palette = make([]color.NRGBA, paletteLength)
+
+var redInterpolant = interpolation.CreateMonotonicCubic(xSequence, redpoints)
+var greenInterpolant = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
+var blueInterpolant = interpolation.CreateMonotonicCubic(xSequence, bluepoints)
 
 type Point struct {
    c complex128
@@ -45,7 +64,7 @@ func calculate_escape(c complex128) float64 {
   }
 
   if (iteration >= maxIterations) {
-    return maxIterations;
+    return maxIterations
   }
 
   z = z*z+c
@@ -85,30 +104,31 @@ func plot(midX float64, midY float64, scale float64, width int, height int, calc
   wg.Wait()
 }
 
-func get_colour(esc float64, smooth bool) color.NRGBA {
+func fill_palette() {
+  for i:= 0; i < paletteLength; i++ {
+    var point = 1.0 * float64(i) / float64(paletteLength)
+    var redpoint = redInterpolant(point)
+    var greenpoint = greenInterpolant(point)
+    var bluepoint = blueInterpolant(point)
+
+    palette[i] = color.NRGBA{uint8(redpoint), uint8(greenpoint), uint8(bluepoint), 255}
+
+  }
+}
+
+func get_colour(esc float64) color.NRGBA {
   if esc >= maxIterations{
     return color.NRGBA{0, 0, 0, 255}
   }
 
-  palette := [16]color.NRGBA{
-    color.NRGBA{66, 30, 15, 255},
-    color.NRGBA{25, 7, 26, 255},
-    color.NRGBA{9, 1, 47, 255},
-    color.NRGBA{4, 4, 73, 255},
-    color.NRGBA{0, 7, 100, 255},
-    color.NRGBA{12, 44, 138, 255},
-    color.NRGBA{24, 82, 177, 255},
-    color.NRGBA{57, 125, 209, 255},
-    color.NRGBA{134, 181, 229, 255},
-    color.NRGBA{211, 236, 248, 255},
-    color.NRGBA{241, 233, 191, 255},
-    color.NRGBA{248, 201, 95, 255},
-    color.NRGBA{255, 170, 0, 255},
-    color.NRGBA{204, 128, 0, 255},
-    color.NRGBA{153, 87, 0, 255},
-    color.NRGBA{106, 52, 3, 255}}
+  if (colour_mode == "true") {
+    var point = esc/float64(maxIterations)
+    var redpoint = redInterpolant(point)
+    var greenpoint = greenInterpolant(point)
+    var bluepoint = blueInterpolant(point)
 
-  if (smooth) {
+    return color.NRGBA{uint8(redpoint), uint8(greenpoint), uint8(bluepoint), 255}
+  } else if (colour_mode == "smooth") {
     clr1 := int(esc)
     t2 :=  esc - float64(clr1);
     t1 := 1 - t2;
@@ -121,9 +141,12 @@ func get_colour(esc float64, smooth bool) color.NRGBA {
     b := float64(palette[clr1].B) * t1 + float64(palette[clr2].B) * t2
 
     return color.NRGBA{uint8(r),uint8(g),uint8(b),255};
-  } else {
+  } else if (colour_mode == "banded") {
     return palette[int(esc) % len(palette)]
+  } else {
+    return color.NRGBA{255, 255, 255, 255};
   }
+
 }
 
 func main() {
@@ -134,20 +157,21 @@ func main() {
   var zoom float64
   var output string
   var filename string
-  var smooth bool
 
   rand.Seed(time.Now().UnixNano())
   flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint. Defaults tp -0.75.")
-  flag.Float64Var(&midY, "i", 0.0, "Imaginary component of the midpoint. Defautls to 0.0.")
+  flag.Float64Var(&midY, "i", 0.0, "Imaginary component of the midpoint. Defaults to 0.0.")
   flag.Float64Var(&zoom, "z", 1, "Zoom level. Defaults to 1.0.")
   flag.StringVar(&output, "o", ".", "Output path. Defaults to current path.")
   flag.StringVar(&filename, "f", "", "Output file name.")
-  flag.BoolVar(&smooth, "s", true, "Smooth colours.")
-  flag.Float64Var(&bailout, "b", 4.0, "Bailout value.")
+  flag.StringVar(&colour_mode, "c", "", "Colour mode: true, smooth, banded, none. Defaults to none.")
+  flag.Float64Var(&bailout, "b", 4.0, "Bailout value. Defaults to 4.0")
   flag.IntVar(&width, "w", 1600, "Width. Defaults to 1600.")
   flag.IntVar(&height, "h", 1600, "Height. Defaults to 1600.")
-  flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations.")
+  flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations. Defaults to 2000")
   flag.Parse()
+
+  fill_palette()
 
   if (filename == "") {
     filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
@@ -166,7 +190,7 @@ func main() {
 
   go func(points<-chan Point, targetImage *image.NRGBA) {
     for p := range points {
-      targetImage.Set(p.x,p.y, get_colour(p.escape, smooth))
+      targetImage.Set(p.x,p.y, get_colour(p.escape))
     }
   }(calculatedChan, b)
 
