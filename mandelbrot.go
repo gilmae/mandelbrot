@@ -14,7 +14,6 @@ import (
     "time"
     "flag"
     "sync"
-    "log"
     "github.com/gilmae/interpolation"
 )
 var  maxIterations float64 = 1000.0
@@ -24,21 +23,16 @@ var height int = 1600
 var paletteLength int = 16;
 var colour_mode string = "";
 
-/*var xSequence = []float64{0.0, .16, .42, .6425, .8675, 1}
+var xSequence = []float64{0.0, .16, .42, .6425, .8675, 1}
 var redpoints =  []float64{0.0,32.0,237.0,255.0,0.0,0.0}
 var greenpoints =  []float64{7.0,107.0,255.0, 170.0, 2.0, 7.0}
-var bluepoints =  []float64{100.0, 203.0,255.0, 0.0, 0.0, 100.0}*/
-
-var xSequence = []float64{0.0, .06666, .13333, .2, .26666, .33333, .4, .466666, .53333, .6, .66666, .73333, .8, .86666, .93333, 1.0}
-var redpoints =  []float64{66.0, 25.0, 9.0, 4.0, 0.0, 12.0, 24.0, 57.0, 134.0, 211.0, 241.0, 248.0, 255.0, 204.0, 153.0, 106.0, }
-var greenpoints =  []float64{30.0, 7.0, 1.0, 4.0, 7.0, 44.0, 82.0, 125.0, 181.0, 236.0, 233.0, 201.0, 170.0, 128.0, 87.0, 52.0}
- var bluepoints =  []float64{15.0, 26.0, 47.0, 73.0, 100.0, 138.0, 177.0, 209.0, 229.0, 248.0, 191.0, 95.0, 0.0, 0.0, 0.0, 3.0}
+var bluepoints =  []float64{100.0, 203.0,255.0, 0.0, 0.0, 100.0}
 
 var palette = make([]color.NRGBA, paletteLength)
 
-var redInterpolant = interpolation.CreateMonotonicCubic(xSequence, redpoints)
-var greenInterpolant = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
-var blueInterpolant = interpolation.CreateMonotonicCubic(xSequence, bluepoints)
+var redInterpolant interpolation.MonotonicCubic  // = interpolation.CreateMonotonicCubic(xSequence, redpoints)
+var greenInterpolant interpolation.MonotonicCubic// = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
+var blueInterpolant interpolation.MonotonicCubic// = interpolation.CreateMonotonicCubic(xSequence, bluepoints)
 
 type Point struct {
    c complex128
@@ -105,6 +99,14 @@ func plot(midX float64, midY float64, scale float64, width int, height int, calc
 }
 
 func fill_palette() {
+  for i, v := range xSequence {
+    xSequence[i] = math.Pow(v,2)
+  }
+
+  redInterpolant = interpolation.CreateMonotonicCubic(xSequence, redpoints)
+  greenInterpolant  = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
+  blueInterpolant  = interpolation.CreateMonotonicCubic(xSequence, bluepoints)
+
   for i:= 0; i < paletteLength; i++ {
     var point = 1.0 * float64(i) / float64(paletteLength)
     var redpoint = redInterpolant(point)
@@ -150,7 +152,7 @@ func get_colour(esc float64) color.NRGBA {
 }
 
 func main() {
-  start := time.Now()
+  //start := time.Now()
 
   var midX float64
   var midY float64
@@ -209,7 +211,7 @@ func main() {
     fmt.Println(err)
   }
 
-  elapsed := time.Since(start)
-  log.Printf("Plot took %s", elapsed)
+  //elapsed := time.Since(start)
+  fmt.Printf("%s\n", filename)
 
 }
