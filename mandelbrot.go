@@ -15,6 +15,9 @@ import (
     "flag"
     "sync"
     "github.com/gilmae/interpolation"
+    "encoding/json"
+    "encoding/hex"
+    //"sort"
 )
 var  maxIterations float64 = 1000.0
 var  bailout float64 = 4.0
@@ -23,16 +26,19 @@ var height int = 1600
 var paletteLength int = 16;
 var colour_mode string = "";
 
-var xSequence = []float64{0.0, .16, .42, .6425, .8675, 1}
-var redpoints =  []float64{0.0,32.0,237.0,255.0,0.0,0.0}
-var greenpoints =  []float64{7.0,107.0,255.0, 170.0, 2.0, 7.0}
-var bluepoints =  []float64{100.0, 203.0,255.0, 0.0, 0.0, 100.0}
+var default_gradient string = `[["0.0", "000764"],["0.16", "026bcb"],["0.42", "edffff"],["0.6425", "ffaa00"],["0.8675", "000200"],["1.0","000764"]]`
+
+var xSequence []float64
+var redpoints []float64
+var greenpoints []float64
+var bluepoints []float64
+
+var redInterpolant interpolation.MonotonicCubic
+var greenInterpolant interpolation.MonotonicCubic
+var blueInterpolant interpolation.MonotonicCubic
 
 var palette = make([]color.NRGBA, paletteLength)
 
-var redInterpolant interpolation.MonotonicCubic  // = interpolation.CreateMonotonicCubic(xSequence, redpoints)
-var greenInterpolant interpolation.MonotonicCubic// = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
-var blueInterpolant interpolation.MonotonicCubic// = interpolation.CreateMonotonicCubic(xSequence, bluepoints)
 
 type Point struct {
    c complex128
@@ -98,10 +104,27 @@ func plot(midX float64, midY float64, scale float64, width int, height int, calc
   wg.Wait()
 }
 
-func fill_palette() {
-  for i, v := range xSequence {
-    xSequence[i] = math.Pow(v,2)
+func build_gradient(gradient_str string){
+  var g [][]string
+
+  byt := []byte(gradient_str)
+  _ = json.Unmarshal(byt, &g)
+  var size = len(g)
+  xSequence = make([]float64, size)
+  redpoints = make([]float64, size)
+  greenpoints = make([]float64, size)
+  bluepoints = make([]float64, size)
+
+  for i, v := range g {
+    xSequence[i],_ = strconv.ParseFloat(v[0],64)
+    b,_ := hex.DecodeString(v[1])
+    redpoints[i] = float64(b[0])
+    greenpoints[i] = float64(b[1])
+    bluepoints[i] = float64(b[2])
   }
+}
+
+func fill_palette() {
 
   redInterpolant = interpolation.CreateMonotonicCubic(xSequence, redpoints)
   greenInterpolant  = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
@@ -131,6 +154,7 @@ func get_colour(esc float64) color.NRGBA {
 
     return color.NRGBA{uint8(redpoint), uint8(greenpoint), uint8(bluepoint), 255}
   } else if (colour_mode == "smooth") {
+    fill_palette()
     clr1 := int(esc)
     t2 :=  esc - float64(clr1);
     t1 := 1 - t2;
@@ -144,6 +168,7 @@ func get_colour(esc float64) color.NRGBA {
 
     return color.NRGBA{uint8(r),uint8(g),uint8(b),255};
   } else if (colour_mode == "banded") {
+    fill_palette()
     return palette[int(esc) % len(palette)]
   } else {
     return color.NRGBA{255, 255, 255, 255};
@@ -159,6 +184,7 @@ func main() {
   var zoom float64
   var output string
   var filename string
+  var gradient string
 
   rand.Seed(time.Now().UnixNano())
   flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint. Defaults tp -0.75.")
@@ -171,9 +197,10 @@ func main() {
   flag.IntVar(&width, "w", 1600, "Width. Defaults to 1600.")
   flag.IntVar(&height, "h", 1600, "Height. Defaults to 1600.")
   flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations. Defaults to 2000")
+  flag.StringVar(&gradient, "g", default_gradient, "Gradient to use.")
   flag.Parse()
 
-  fill_palette()
+  build_gradient(gradient)
 
   if (filename == "") {
     filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
