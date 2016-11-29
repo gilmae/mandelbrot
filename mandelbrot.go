@@ -52,7 +52,7 @@ const (
     rMax   = 0.75
     iMin   = -1.5
     iMax   = 1.5
-    usage  = "mandelbot output_path real imaginary zoom\n\n Plots the mandelbrot set, centered at point indicated by real,imaginary and at the given zoom level.\n\nSaves the output into the given path.\n\n"
+    usage  = "mandelbot OPTIONS\n\nPlots the mandelbrot set, centered at a point indicated by the provided real and imaginary, and at the given zoom level.\n\nSaves the output into the given path.\n\n"
 )
 
 func calculate_escape(c complex128) float64 {
@@ -185,16 +185,16 @@ func main() {
   var gradient string
 
   rand.Seed(time.Now().UnixNano())
-  flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint. Defaults tp -0.75.")
-  flag.Float64Var(&midY, "i", 0.0, "Imaginary component of the midpoint. Defaults to 0.0.")
-  flag.Float64Var(&zoom, "z", 1, "Zoom level. Defaults to 1.0.")
-  flag.StringVar(&output, "o", ".", "Output path. Defaults to current path.")
+  flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint.")
+  flag.Float64Var(&midY, "i", 0.0, "Imaginary component of the midpoint.")
+  flag.Float64Var(&zoom, "z", 1, "Zoom level.")
+  flag.StringVar(&output, "o", ".", "Output path.")
   flag.StringVar(&filename, "f", "", "Output file name.")
-  flag.StringVar(&colour_mode, "c", "", "Colour mode: true, smooth, banded, none. Defaults to none.")
-  flag.Float64Var(&bailout, "b", 4.0, "Bailout value. Defaults to 4.0")
-  flag.IntVar(&width, "w", 1600, "Width. Defaults to 1600.")
-  flag.IntVar(&height, "h", 1600, "Height. Defaults to 1600.")
-  flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations. Defaults to 2000")
+  flag.StringVar(&colour_mode, "c", "none", "Colour mode: true, smooth, banded, none.")
+  flag.Float64Var(&bailout, "b", 4.0, "Bailout value.")
+  flag.IntVar(&width, "w", 1600, "Width of render.")
+  flag.IntVar(&height, "h", 1600, "Height of render.")
+  flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations before giving up on finding an escape.")
   flag.StringVar(&gradient, "g", default_gradient, "Gradient to use.")
   flag.Parse()
 
