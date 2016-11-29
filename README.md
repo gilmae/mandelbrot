@@ -3,7 +3,7 @@
 A program that generates images of the Mandelbrot set.
 
 ## Usage
-
+```
 mandelbrot OPTIONS
 
 -b float
@@ -28,3 +28,4 @@ mandelbrot OPTIONS
     Width of render. (default 1600)
 -z float
     Zoom level. (default 1)
+```
