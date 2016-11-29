@@ -122,13 +122,13 @@ func build_gradient(gradient_str string){
     greenpoints[i] = float64(b[1])
     bluepoints[i] = float64(b[2])
   }
-}
-
-func fill_palette() {
 
   redInterpolant = interpolation.CreateMonotonicCubic(xSequence, redpoints)
   greenInterpolant  = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
   blueInterpolant  = interpolation.CreateMonotonicCubic(xSequence, bluepoints)
+}
+
+func fill_palette() {
 
   for i:= 0; i < paletteLength; i++ {
     var point = 1.0 * float64(i) / float64(paletteLength)
@@ -154,7 +154,6 @@ func get_colour(esc float64) color.NRGBA {
 
     return color.NRGBA{uint8(redpoint), uint8(greenpoint), uint8(bluepoint), 255}
   } else if (colour_mode == "smooth") {
-    fill_palette()
     clr1 := int(esc)
     t2 :=  esc - float64(clr1);
     t1 := 1 - t2;
@@ -168,7 +167,6 @@ func get_colour(esc float64) color.NRGBA {
 
     return color.NRGBA{uint8(r),uint8(g),uint8(b),255};
   } else if (colour_mode == "banded") {
-    fill_palette()
     return palette[int(esc) % len(palette)]
   } else {
     return color.NRGBA{255, 255, 255, 255};
@@ -201,6 +199,7 @@ func main() {
   flag.Parse()
 
   build_gradient(gradient)
+  fill_palette()
 
   if (filename == "") {
     filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
