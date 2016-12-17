@@ -2,50 +2,35 @@ package main
 
 import (
     "fmt"
-    "image"
-    "image/color"
-    "image/draw"
-    "image/jpeg"
     "math/cmplx"
-    "os"
     "strconv"
     "math"
     "math/rand"
     "time"
     "flag"
     "sync"
-    "github.com/gilmae/interpolation"
-    "encoding/json"
-    "encoding/hex"
     //"sort"
 )
+
 var  maxIterations float64 = 1000.0
 var  bailout float64 = 4.0
 var  width int = 1600
 var height int = 1600
-var paletteLength int = 16;
-var colour_mode string = "";
 
 var default_gradient string = `[["0.0", "000764"],["0.16", "026bcb"],["0.42", "edffff"],["0.6425", "ffaa00"],["0.8675", "000200"],["1.0","000764"]]`
 
-var xSequence []float64
-var redpoints []float64
-var greenpoints []float64
-var bluepoints []float64
-
-var redInterpolant interpolation.MonotonicCubic
-var greenInterpolant interpolation.MonotonicCubic
-var blueInterpolant interpolation.MonotonicCubic
-
-var palette = make([]color.NRGBA, paletteLength)
-
-
 type Point struct {
-   c complex128
-   x int
-   y int
-   escape float64
+   C complex128
+   X int
+   Y int
+   Escape float64
 }
+
+type Key struct {
+    x, y int
+}
+
+var points_map map[Key]Point
 
 const (
     rMin   = -2.25
@@ -55,7 +40,7 @@ const (
     usage  = "mandelbot OPTIONS\n\nPlots the mandelbrot set, centered at a point indicated by the provided real and imaginary, and at the given zoom level.\n\nSaves the output into the given path.\n\n"
 )
 
-func calculate_escape(c complex128) float64 {
+func calculate_escape(c complex128, add_smoothing_jitter bool) float64 {
   iteration := 0.0
 
   var z complex128
@@ -67,17 +52,20 @@ func calculate_escape(c complex128) float64 {
     return maxIterations
   }
 
-  z = z*z+c
-  z = z*z+c
-  iteration += 2
-  reZ := real(z)
-  imZ := imag(z)
-  magnitude := math.Sqrt(reZ * reZ + imZ * imZ)
-  mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
-  return mu
+  if (add_smoothing_jitter) {
+    z = z*z+c
+    z = z*z+c
+    iteration += 2
+    reZ := real(z)
+    imZ := imag(z)
+    magnitude := math.Sqrt(reZ * reZ + imZ * imZ)
+    mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
+    return mu
+  }
+  return iteration
 }
 
-func plot(midX float64, midY float64, scale float64, width int, height int, calculated chan Point) {
+func plot(midX float64, midY float64, scale float64, width int, height int, calculated chan Point, add_smoothing_jitter bool) {
   points := make(chan Point, 64)
 
   // spawn four worker goroutines
@@ -86,7 +74,7 @@ func plot(midX float64, midY float64, scale float64, width int, height int, calc
     wg.Add(1)
     go func() {
       for p := range points {
-        p.escape = calculate_escape(p.c)
+        p.Escape = calculate_escape(p.C, add_smoothing_jitter)
         calculated <- p
       }
       wg.Done()
@@ -104,75 +92,9 @@ func plot(midX float64, midY float64, scale float64, width int, height int, calc
   wg.Wait()
 }
 
-func build_gradient(gradient_str string){
-  var g [][]string
 
-  byt := []byte(gradient_str)
-  _ = json.Unmarshal(byt, &g)
-  var size = len(g)
-  xSequence = make([]float64, size)
-  redpoints = make([]float64, size)
-  greenpoints = make([]float64, size)
-  bluepoints = make([]float64, size)
 
-  for i, v := range g {
-    xSequence[i],_ = strconv.ParseFloat(v[0],64)
-    b,_ := hex.DecodeString(v[1])
-    redpoints[i] = float64(b[0])
-    greenpoints[i] = float64(b[1])
-    bluepoints[i] = float64(b[2])
-  }
 
-  redInterpolant = interpolation.CreateMonotonicCubic(xSequence, redpoints)
-  greenInterpolant  = interpolation.CreateMonotonicCubic(xSequence, greenpoints)
-  blueInterpolant  = interpolation.CreateMonotonicCubic(xSequence, bluepoints)
-}
-
-func fill_palette() {
-
-  for i:= 0; i < paletteLength; i++ {
-    var point = 1.0 * float64(i) / float64(paletteLength)
-    var redpoint = redInterpolant(point)
-    var greenpoint = greenInterpolant(point)
-    var bluepoint = blueInterpolant(point)
-
-    palette[i] = color.NRGBA{uint8(redpoint), uint8(greenpoint), uint8(bluepoint), 255}
-
-  }
-}
-
-func get_colour(esc float64) color.NRGBA {
-  if esc >= maxIterations{
-    return color.NRGBA{0, 0, 0, 255}
-  }
-
-  if (colour_mode == "true") {
-    var point = esc/float64(maxIterations)
-    var redpoint = redInterpolant(point)
-    var greenpoint = greenInterpolant(point)
-    var bluepoint = blueInterpolant(point)
-
-    return color.NRGBA{uint8(redpoint), uint8(greenpoint), uint8(bluepoint), 255}
-  } else if (colour_mode == "smooth") {
-    clr1 := int(esc)
-    t2 :=  esc - float64(clr1);
-    t1 := 1 - t2;
-
-    clr1 = clr1 % len(palette)
-    clr2 := (clr1 + 1) % len(palette)
-
-    r := float64(palette[clr1].R) * t1 + float64(palette[clr2].R) * t2
-    g := float64(palette[clr1].G) * t1 + float64(palette[clr2].G) * t2
-    b := float64(palette[clr1].B) * t1 + float64(palette[clr2].B) * t2
-
-    return color.NRGBA{uint8(r),uint8(g),uint8(b),255};
-  } else if (colour_mode == "banded") {
-    return palette[int(esc) % len(palette)]
-  } else {
-    return color.NRGBA{255, 255, 255, 255};
-  }
-
-}
 
 func main() {
   //start := time.Now()
@@ -183,6 +105,7 @@ func main() {
   var output string
   var filename string
   var gradient string
+  var mode string
 
   rand.Seed(time.Now().UnixNano())
   flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint.")
@@ -196,48 +119,63 @@ func main() {
   flag.IntVar(&height, "h", 1600, "Height of render.")
   flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations before giving up on finding an escape.")
   flag.StringVar(&gradient, "g", default_gradient, "Gradient to use.")
+  flag.StringVar(&mode, "mode", "image", "Mode: edge, image")
   flag.Parse()
 
-  build_gradient(gradient)
-  fill_palette()
-
-  if (filename == "") {
-    filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
-  }
-
-  filename = output + "/" + filename
 
   scale := (float64(width) / (rMax - rMin))
   scale = scale * zoom
 
-  bounds := image.Rect(0,0,width,height)
-  b := image.NewNRGBA(bounds)
-  draw.Draw(b, bounds, image.NewUniform(color.Black), image.ZP, draw.Src)
+  points_map = make(map[Key]Point)
 
   calculatedChan := make(chan Point)
 
-  go func(points<-chan Point, targetImage *image.NRGBA) {
+  go func(points<-chan Point, hash map[Key]Point) {
     for p := range points {
-      targetImage.Set(p.x,p.y, get_colour(p.escape))
+      hash[Key{p.X,p.Y}] = p
     }
-  }(calculatedChan, b)
+  }(calculatedChan, points_map)
 
-  plot(midX, midY, scale, width, height, calculatedChan)
+  plot(midX, midY, scale, width, height, calculatedChan, mode=="image" && colour_mode=="smooth")
 
-  file, err := os.Create(filename)
-  if err != nil {
-    fmt.Println(err)
+  if (mode == "image") {
+    if (filename == "") {
+      filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
+    }
+
+    filename = output + "/" + filename
+
+    draw_image(filename, points_map, width, height, gradient)
+    fmt.Printf("%s\n", filename)
+  } else if (mode == "edge") {
+    var edgePoints = make(chan Point)
+
+    var found_edges []Point = make([]Point, 0)
+
+    go func(edge<-chan Point) {
+      for p := range edge {
+        found_edges = append(found_edges, p)
+      }
+    }(edgePoints)
+
+    find_edges(edgePoints)
+
+    if (len(found_edges) == 0) {
+      return
+    }
+
+    var index = int(rand.Float64() * float64(len(found_edges)))
+
+    var p = found_edges[index].C
+    fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
+  } else if (mode == "raw") {
+
+    if (filename == "") {
+      filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".json"
+    }
+
+    filename = output + "/" + filename
+
+    write_raw(points_map, filename)
   }
-
-  if err = jpeg.Encode(file,b, &jpeg.Options{jpeg.DefaultQuality}); err != nil {
-    fmt.Println(err)
-  }
-
-  if err = file.Close();err != nil {
-    fmt.Println(err)
-  }
-
-  //elapsed := time.Since(start)
-  fmt.Printf("%s\n", filename)
-
 }
