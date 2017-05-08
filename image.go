@@ -66,7 +66,7 @@ func fill_palette() {
 
 func get_colour(esc float64) color.NRGBA {
   if esc >= maxIterations{
-    return color.NRGBA{0, 0, 0, 255}
+    return color.NRGBA{0, 0, 0, 254}
   }
 
   if (colour_mode == "true") {
@@ -112,6 +112,8 @@ func draw_image(filename string, plot_map map[Key]Point, width int, height int, 
       b.Set(p.X, p.Y, get_colour(p.Escape))
     }
   }
+
+
   file, err := os.Create(filename)
   if err != nil {
     fmt.Println(err)
