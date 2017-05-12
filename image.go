@@ -66,7 +66,7 @@ func fill_palette() {
 
 func get_colour(esc float64) color.NRGBA {
   if esc >= maxIterations{
-    return color.NRGBA{0, 0, 0, 254}
+    return color.NRGBA{0, 0, 0, 255}
   }
 
   if (colour_mode == "true") {
