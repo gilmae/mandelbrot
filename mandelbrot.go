@@ -16,6 +16,8 @@ var  maxIterations float64 = 1000.0
 var  bailout float64 = 4.0
 var  width int = 1600
 var height int = 1600
+var x int = 0
+var y int = 0
 
 var default_gradient string = `[["0.0", "000764"],["0.16", "026bcb"],["0.42", "edffff"],["0.6425", "ffaa00"],["0.8675", "000200"],["1.0","000764"]]`
 
@@ -83,13 +85,17 @@ func plot(midX float64, midY float64, scale float64, width int, height int, calc
 
   for x:=0; x < width; x += 1 {
     for y:=0; y < height; y += 1 {
-      points <- Point{complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY),x,y, 0}
+      points <- Point{get_cordinates(midX, midY, scale, width, height, x, y),x,y, 0}
     }
   }
 
   close(points)
 
   wg.Wait()
+}
+
+func get_cordinates(midX float64, midY float64, scale float64, width int, height int, x int, y int) complex128 {
+  return complex(float64(x - width/2)/scale + midX, float64((height-y) - height/2)/scale+midY)
 }
 
 
@@ -119,12 +125,15 @@ func main() {
   flag.IntVar(&height, "h", 1600, "Height of render.")
   flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations before giving up on finding an escape.")
   flag.StringVar(&gradient, "g", default_gradient, "Gradient to use.")
-  flag.StringVar(&mode, "mode", "image", "Mode: edge, image")
+  flag.StringVar(&mode, "mode", "image", "Mode: edge, image, coordsAt")
+  flag.IntVar(&x, "x", 0, "x cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
+  flag.IntVar(&y, "y", 0, "y cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
   flag.Parse()
 
 
   scale := (float64(width) / (rMax - rMin))
   scale = scale * zoom
+
 
   points_map = make(map[Key]Point)
 
@@ -136,9 +145,9 @@ func main() {
     }
   }(calculatedChan, points_map)
 
-  plot(midX, midY, scale, width, height, calculatedChan, mode=="image" && colour_mode=="smooth")
-
+  
   if (mode == "image") {
+    plot(midX, midY, scale, width, height, calculatedChan, mode=="image" && colour_mode=="smooth")
     if (filename == "") {
       filename = "mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
     }
@@ -148,6 +157,7 @@ func main() {
     draw_image(filename, points_map, width, height, gradient)
     fmt.Printf("%s\n", filename)
   } else if (mode == "edge") {
+    plot(midX, midY, scale, width, height, calculatedChan, mode=="image" && colour_mode=="smooth")
     var edgePoints = make(chan Point)
 
     var found_edges []Point = make([]Point, 0)
@@ -169,7 +179,8 @@ func main() {
     var p = found_edges[index].C
     fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
   } else if (mode == "raw") {
-
+    plot(midX, midY, scale, width, height, calculatedChan, mode=="image" && colour_mode=="smooth")
+    
     if (filename == "") {
       filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".json"
     }
@@ -177,5 +188,8 @@ func main() {
     filename = output + "/" + filename
 
     write_raw(points_map, filename)
+  } else if (mode == "coordsAt") {
+    var p = get_cordinates(midX, midY, scale, width, height, x, y)
+    fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
   }
 }
