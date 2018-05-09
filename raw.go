@@ -4,7 +4,10 @@ import (
   "encoding/json"
   "os"
   "fmt"
+  "github.com/gilmae/fractal"
 )
+
+type Point fractal.Point
 
 func (p *Point) MarshalJSON() ([]byte, error) {
 	type Alias Point
@@ -23,14 +26,14 @@ func (p *Point) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func write_raw(points map[Key]Point, filename string) {
+func write_raw(points map[fractal.Key]fractal.Point, filename string) {
   file, err := os.Create(filename)
   if err != nil {
     fmt.Println(err)
   }
 
 
-  for _, v := range points_map {
+  for _, v := range points {
     json.NewEncoder(file).Encode(&v)
   }
 

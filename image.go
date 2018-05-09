@@ -11,7 +11,7 @@ import (
   "encoding/hex"
   "os"
   "strconv"
-
+  "github.com/gilmae/fractal"
 )
 
 var xSequence []float64
@@ -97,7 +97,7 @@ func get_colour(esc float64) color.NRGBA {
 
 }
 
-func draw_image(filename string, plot_map map[Key]Point, width int, height int, gradient string){
+func draw_image(filename string, plot_map map[fractal.Key]fractal.Point, width int, height int, gradient string){
   build_gradient(gradient)
   fill_palette()
 
@@ -108,7 +108,7 @@ func draw_image(filename string, plot_map map[Key]Point, width int, height int, 
 
   for x:=0; x < width; x += 1 {
     for y:=0; y < height; y += 1 {
-      var p = plot_map[Key{x,y}]
+      var p = plot_map[fractal.Key{x,y}]
       b.Set(p.X, p.Y, get_colour(p.Escape))
     }
   }
