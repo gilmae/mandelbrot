@@ -50,6 +50,7 @@ func main() {
   var filename string
   var gradient string
   var mode string
+  var colour_mode string = ""
 
   rand.Seed(time.Now().UnixNano())
   flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint.")
@@ -106,7 +107,7 @@ func main() {
 
     filename = output + "/" + filename
 
-    draw_image(filename, points_map, width, height, gradient)
+    fractal.Draw_Image(filename, points_map, width, height, gradient, maxIterations, colour_mode)
     fmt.Printf("%s\n", filename)
   } else if (mode == "edge") {
     var points_map = fractal.Escape_Time_Calculator(base, midX, midY, zoom, width, height, calculator);
@@ -120,7 +121,7 @@ func main() {
       }
     }(edgePoints)
 
-    find_edges(edgePoints, points_map)
+    fractal.Find_Edges(edgePoints, points_map, width, height)
 
     if (len(found_edges) == 0) {
       return
@@ -139,7 +140,7 @@ func main() {
 
     filename = output + "/" + filename
 
-    write_raw(points_map, filename)
+    fractal.Write_Raw(points_map, filename)
   } else if (mode == "coordsAt") {
     var p = get_cordinates(midX, midY, zoom, width, height, x, y)
     fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
