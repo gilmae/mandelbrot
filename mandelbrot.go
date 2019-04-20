@@ -21,7 +21,7 @@ var width int = 1600
 var height int = 1600
 var x int = 0
 var y int = 0
-var prec uint = 256
+var prec uint = 128
 
 var default_gradient string = `[["0.0", "000764"],["0.16", "026bcb"],["0.42", "edffff"],["0.6425", "ffaa00"],["0.8675", "000200"],["1.0","000764"]]`
 
@@ -80,6 +80,7 @@ func main() {
 	flag.StringVar(&mode, "mode", "image", "Mode: edge, image, coordsAt")
 	flag.IntVar(&x, "x", 0, "x cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
 	flag.IntVar(&y, "y", 0, "y cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
+	flag.UintVar(&prec, "p", 128, "Precision of floats")
 	flag.Parse()
 
 	bigX := get_big_float(midX)
