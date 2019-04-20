@@ -1,20 +1,20 @@
 package main
 
 import (
-    "fmt"
-    "math/cmplx"
-    "strconv"
-    "math"
-    "math/rand"
-    "time"
-    "flag"
-    "github.com/gilmae/fractal"
-    "github.com/gilmae/rescale"
+	"flag"
+	"fmt"
+	"math"
+	"math/rand"
+	"strconv"
+	"time"
+
+	"github.com/gilmae/fractal"
+	"github.com/gilmae/rescale"
 )
 
-var  maxIterations float64 = 1000.0
-var  bailout float64 = 4.0
-var  width int = 1600
+var maxIterations float64 = 1000.0
+var bailout float64 = 4.0
+var width int = 1600
 var height int = 1600
 var x int = 0
 var y int = 0
@@ -22,127 +22,146 @@ var y int = 0
 var default_gradient string = `[["0.0", "000764"],["0.16", "026bcb"],["0.42", "edffff"],["0.6425", "ffaa00"],["0.8675", "000200"],["1.0","000764"]]`
 
 const (
-    rMin   = -2.25
-    rMax   = 0.75
-    iMin   = -1.5
-    iMax   = 1.5
-    usage  = "mandelbot OPTIONS\n\nPlots the mandelbrot set, centered at a point indicated by the provided real and imaginary, and at the given zoom level.\n\nSaves the output into the given path.\n\n"
+	rMin  = -2.25
+	rMax  = 0.75
+	iMin  = -1.5
+	iMax  = 1.5
+	usage = "mandelbot OPTIONS\n\nPlots the mandelbrot set, centered at a point indicated by the provided real and imaginary, and at the given zoom level.\n\nSaves the output into the given path.\n\n"
 )
 
 func get_cordinates(midX float64, midY float64, zoom float64, width int, height int, x int, y int) complex128 {
-  new_r_start, new_r_end := rescale.GetZoomedBounds(rMin, rMax, midX, zoom)
-  scaled_r := rescale.Rescale(new_r_start, new_r_end, width, x)
+	new_r_start, new_r_end := rescale.GetZoomedBounds(rMin, rMax, midX, zoom)
+	scaled_r := rescale.Rescale(new_r_start, new_r_end, width, x)
 
-  new_i_start, new_i_end := rescale.GetZoomedBounds(iMin, iMax, midY, zoom)
-  scaled_i := rescale.Rescale(new_i_start, new_i_end, height, height-y)
+	new_i_start, new_i_end := rescale.GetZoomedBounds(iMin, iMax, midY, zoom)
+	scaled_i := rescale.Rescale(new_i_start, new_i_end, height, height-y)
 
-  return complex(scaled_r, scaled_i)
+	return complex(scaled_r, scaled_i)
 }
 
+func zTimesZPlusC(zr float64, zi float64, cr float64, ci float64, rs float64, is float64) (float64, float64, float64, float64) {
+
+	var r = zr
+	var i = zi
+	var rsquared = rs
+	var isquared = is
+
+	i = math.Pow(r+i, 2.0) - rsquared - isquared
+	i += ci
+	r = rsquared - isquared + cr
+	rsquared = math.Pow(r, 2.0)
+	isquared = math.Pow(i, 2.0)
+
+	return r, i, rsquared, isquared
+}
 
 func main() {
-  //start := time.Now()
+	//start := time.Now()
 
-  var midX float64
-  var midY float64
-  var zoom float64
-  var output string
-  var filename string
-  var gradient string
-  var mode string
-  var colour_mode string = ""
+	var midX float64
+	var midY float64
+	var zoom float64
+	var output string
+	var filename string
+	var gradient string
+	var mode string
+	var colour_mode string = ""
 
-  rand.Seed(time.Now().UnixNano())
-  flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint.")
-  flag.Float64Var(&midY, "i", 0.0, "Imaginary component of the midpoint.")
-  flag.Float64Var(&zoom, "z", 1, "Zoom level.")
-  flag.StringVar(&output, "o", ".", "Output path.")
-  flag.StringVar(&filename, "f", "", "Output file name.")
-  flag.StringVar(&colour_mode, "c", "none", "Colour mode: true, smooth, banded, none.")
-  flag.Float64Var(&bailout, "b", 4.0, "Bailout value.")
-  flag.IntVar(&width, "w", 1600, "Width of render.")
-  flag.IntVar(&height, "h", 1600, "Height of render.")
-  flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations before giving up on finding an escape.")
-  flag.StringVar(&gradient, "g", default_gradient, "Gradient to use.")
-  flag.StringVar(&mode, "mode", "image", "Mode: edge, image, coordsAt")
-  flag.IntVar(&x, "x", 0, "x cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
-  flag.IntVar(&y, "y", 0, "y cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
-  flag.Parse()
-  
-  var calculator fractal.EscapeCalculator = func(z complex128) (float64, complex128, bool) {
-    iteration := 0.0
-    c := z
+	rand.Seed(time.Now().UnixNano())
+	flag.Float64Var(&midX, "r", -0.75, "Real component of the midpoint.")
+	flag.Float64Var(&midY, "i", 0.0, "Imaginary component of the midpoint.")
+	flag.Float64Var(&zoom, "z", 1, "Zoom level.")
+	flag.StringVar(&output, "o", ".", "Output path.")
+	flag.StringVar(&filename, "f", "", "Output file name.")
+	flag.StringVar(&colour_mode, "c", "none", "Colour mode: true, smooth, banded, none.")
+	flag.Float64Var(&bailout, "b", 4.0, "Bailout value.")
+	flag.IntVar(&width, "w", 1600, "Width of render.")
+	flag.IntVar(&height, "h", 1600, "Height of render.")
+	flag.Float64Var(&maxIterations, "m", 2000.0, "Maximum Iterations before giving up on finding an escape.")
+	flag.StringVar(&gradient, "g", default_gradient, "Gradient to use.")
+	flag.StringVar(&mode, "mode", "image", "Mode: edge, image, coordsAt")
+	flag.IntVar(&x, "x", 0, "x cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
+	flag.IntVar(&y, "y", 0, "y cordinate of a pixel, used for translating to the real component. 0,0 is top left.")
+	flag.Parse()
 
-    for z= c;cmplx.Abs(z) < bailout && iteration < maxIterations; iteration+=1 {
-      z = z*z+c;
-    }
+	var calculator fractal.EscapeCalculator = func(z complex128) (float64, complex128, bool) {
+		iteration := 0.0
+		constantReal := real(z)
+		constantImag := imag(z)
+		var r float64 = 0.0
+		var i float64 = 0.0
+		var rsquared float64 = 0.0
+		var isquared float64 = 0.0
 
-    if (iteration >= maxIterations) {
-      return maxIterations, z, false
-    }
-    
-    if (mode=="image" && colour_mode=="smooth") {
-      z = z*z+c
-      z = z*z+c
-      iteration += 2
-      reZ := real(z)
-      imZ := imag(z)
-      magnitude := math.Sqrt(reZ * reZ + imZ * imZ)
-      mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
-    
-      return mu, z, true
-    }
-    
-    return iteration, z, true
-  }
+		for (rsquared+isquared) <= bailout && iteration < maxIterations {
+			r, i, rsquared, isquared = zTimesZPlusC(r, i, constantReal, constantImag, rsquared, isquared)
+			iteration++
+		}
 
-  base := fractal.Base{rMin, rMax, iMin, iMax}
+		if iteration >= maxIterations {
+			return maxIterations, z, false
+		}
 
-  
-  if (mode == "image") {
-    var points_map = fractal.Escape_Time_Calculator(base, midX, midY, zoom, width, height, calculator);
-    if (filename == "") {
-      filename = "mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
-    }
+		if mode == "image" && colour_mode == "smooth" {
+			r, i, rsquared, isquared = zTimesZPlusC(r, i, constantReal, constantImag, rsquared, isquared)
+			r, i, rsquared, isquared = zTimesZPlusC(r, i, constantReal, constantImag, rsquared, isquared)
 
-    filename = output + "/" + filename
+			iteration += 2
+			magnitude := math.Sqrt(rsquared + isquared)
+			mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
 
-    fractal.Draw_Image(filename, points_map, width, height, gradient, maxIterations, colour_mode)
-    fmt.Printf("%s\n", filename)
-  } else if (mode == "edge") {
-    var points_map = fractal.Escape_Time_Calculator(base, midX, midY, zoom, width, height, calculator);
-    var edgePoints = make(chan fractal.Point)
+			return mu, complex(r, i), true
+		}
 
-    var found_edges []fractal.Point = make([]fractal.Point, 0)
+		return iteration, z, true
+	}
 
-    go func(edge<-chan fractal.Point) {
-      for p := range edge {
-        found_edges = append(found_edges, p)
-      }
-    }(edgePoints)
+	base := fractal.Base{rMin, rMax, iMin, iMax}
 
-    fractal.Find_Edges(edgePoints, points_map, width, height)
+	if mode == "image" {
+		var points_map = fractal.Escape_Time_Calculator(base, midX, midY, zoom, width, height, calculator)
+		if filename == "" {
+			filename = "mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" + strconv.FormatFloat(zoom, 'E', -1, 64) + ".jpg"
+		}
 
-    if (len(found_edges) == 0) {
-      return
-    }
+		filename = output + "/" + filename
 
-    var index = int(rand.Float64() * float64(len(found_edges)))
+		fractal.Draw_Image(filename, points_map, width, height, gradient, maxIterations, colour_mode)
+		fmt.Printf("%s\n", filename)
+	} else if mode == "edge" {
+		var points_map = fractal.Escape_Time_Calculator(base, midX, midY, zoom, width, height, calculator)
+		var edgePoints = make(chan fractal.Point)
 
-    var p = found_edges[index].C
-    fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
-  } else if (mode == "raw") {
-    var points_map = fractal.Escape_Time_Calculator(base, midX, midY, zoom, width, height, calculator);
-    
-    if (filename == "") {
-      filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" +  strconv.FormatFloat(zoom, 'E', -1, 64) + ".json"
-    }
+		var found_edges []fractal.Point = make([]fractal.Point, 0)
 
-    filename = output + "/" + filename
+		go func(edge <-chan fractal.Point) {
+			for p := range edge {
+				found_edges = append(found_edges, p)
+			}
+		}(edgePoints)
 
-    fractal.Write_Raw(points_map, filename)
-  } else if (mode == "coordsAt") {
-    var p = get_cordinates(midX, midY, zoom, width, height, x, y)
-    fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
-  }
+		fractal.Find_Edges(edgePoints, points_map, width, height)
+
+		if len(found_edges) == 0 {
+			return
+		}
+
+		var index = int(rand.Float64() * float64(len(found_edges)))
+
+		var p = found_edges[index].C
+		fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
+	} else if mode == "raw" {
+		var points_map = fractal.Escape_Time_Calculator(base, midX, midY, zoom, width, height, calculator)
+
+		if filename == "" {
+			filename = "/mb_" + strconv.FormatFloat(midX, 'E', -1, 64) + "_" + strconv.FormatFloat(midY, 'E', -1, 64) + "_" + strconv.FormatFloat(zoom, 'E', -1, 64) + ".json"
+		}
+
+		filename = output + "/" + filename
+
+		fractal.Write_Raw(points_map, filename)
+	} else if mode == "coordsAt" {
+		var p = get_cordinates(midX, midY, zoom, width, height, x, y)
+		fmt.Printf("%18.17e, %18.17e\n", real(p), imag(p))
+	}
 }
