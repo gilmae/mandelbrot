@@ -53,6 +53,35 @@ func get_cordinates(midX mbig.Float, midY mbig.Float, zoom float64, width int, h
 	return scaled_r, scaled_i
 }
 
+func zTimesZPlusC(zr mbig.Float, zi mbig.Float, cr mbig.Float, ci mbig.Float, rs mbig.Float, is mbig.Float) {
+
+	var r = new(mbig.Float).Copy(&zr)
+	var i = new(mbig.Float).Copy(&zi)
+	var rsquared = new(mbig.Float).Copy(&rs)
+	var isquared = new(mbig.Float).Copy(&is)
+
+	var rAndI = new(mbig.Float).Add(r, i)
+
+	i = rAndI.Mul(rAndI, rAndI)
+	i.Sub(i, rsquared)
+	i.Sub(i, isquared)
+	i.Add(i, &ci)
+
+	zi.Set(i)
+
+	r = rsquared.Sub(rsquared, isquared)
+	r = r.Add(r, &cr)
+
+	zr.Set(r)
+
+	rs.Set(r)
+	rs.Mul(r, r)
+
+	is.Set(i)
+	is.Mul(i, i)
+
+}
+
 func main() {
 	//start := time.Now()
 
@@ -87,31 +116,32 @@ func main() {
 	bigY := get_big_float(midY)
 
 	var calculator fractal.EscapeCalculator = func(seed fractal.BigComplex) (float64, fractal.BigComplex, bool) {
-		iteration := 0.0
+
 		bigBailout := mbig.NewFloat(bailout)
+		iteration := 0.0
+		constantReal := seed.R
+		constantImag := seed.I
+		var r mbig.Float = get_big_float(0.0)
+		var i mbig.Float = get_big_float(0.0)
+		var rsquared mbig.Float = get_big_float(0.0)
+		var isquared mbig.Float = get_big_float(0.0)
 
-		c := new(fractal.BigComplex)
-		c.Set(&seed)
-		z := new(fractal.BigComplex)
-		z.Set(&seed)
+		var sumedSquares = new(mbig.Float).Add(&rsquared, &isquared)
 
-		for ; fractal.Abs(z).Cmp(bigBailout) < 0 && iteration < maxIterations; iteration += 1 {
-			z.Mul(z, z)
-			z.Add(z, c)
+		for sumedSquares.Cmp(bigBailout) <= 0 && iteration < maxIterations {
+			zTimesZPlusC(r, i, constantReal, constantImag, rsquared, isquared)
+			iteration++
 		}
 
 		if iteration >= maxIterations {
-			return maxIterations, *z, false
+			return maxIterations, seed, false
 		}
 
 		if mode == "image" && colour_mode == "smooth" {
-			z.Mul(z, z)
-			z.Add(z, c)
-			z.Mul(z, z)
-			z.Add(z, c)
+			zTimesZPlusC(r, i, constantReal, constantImag, rsquared, isquared)
 			iteration += 2
-			reZ := fractal.Real(z)
-			imZ := fractal.Imag(z)
+			reZ := &seed.R
+			imZ := &seed.I
 			bigMagnitude := new(mbig.Float).Set(reZ)
 			bigMagnitude.Mul(bigMagnitude, bigMagnitude)
 
@@ -125,10 +155,10 @@ func main() {
 
 			mu := iteration + 1 - (math.Log(math.Log(magnitude)))/math.Log(2.0)
 
-			return mu, *z, true
+			return mu, seed, true
 		}
 
-		return iteration, *z, true
+		return iteration, seed, true
 	}
 
 	base := fractal.Base{get_big_float(rMin), get_big_float(rMax), get_big_float(iMin), get_big_float(iMax)}
